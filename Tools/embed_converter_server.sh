@@ -26,7 +26,11 @@ for resource_bundle in "${server_build_directory}"/*.bundle; do
         ditto "${resource_bundle}" "${embedded_resource_bundle}"
         # command-line SwiftPM buildが生成するbundleはInfo.plistを持たないため、
         # archiveのcodesignが正規のresource bundleとして検証できるよう補う。
-        cp "${SRCROOT}/Tools/ConverterServerResourceBundleInfo.plist" "${embedded_resource_bundle}/Info.plist"
+        # Xcode 27のSwiftPMはContents/Info.plistを持つbundleを生成する。その場合にrootへ
+        # Info.plistを足すと、codesignが「unsealed contents present in the bundle root」で拒否する。
+        if [ ! -f "${embedded_resource_bundle}/Contents/Info.plist" ]; then
+            cp "${SRCROOT}/Tools/ConverterServerResourceBundleInfo.plist" "${embedded_resource_bundle}/Info.plist"
+        fi
     fi
 done
 
