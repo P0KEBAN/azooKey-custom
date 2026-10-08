@@ -9,6 +9,7 @@ final class ConverterSession: SegmentManagerDelegate {
     let conversionSessionID: KanaKanjiConverter.ConversionSessionID
     var inputState: InputState = .none
     var inputLanguage: InputLanguage = .japanese
+    var temporaryEnglishInput = false
     var lastHandledKeyEventID: UInt64?
     var lastKeyEventResponse: ConverterServerResponse?
     private var context = ConverterTextContext()

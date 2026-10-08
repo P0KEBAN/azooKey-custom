@@ -174,6 +174,7 @@ final class ConverterServer: NSObject, ConverterServerXPCProtocol, @unchecked Se
             session.clearReplaceSuggestions()
             return makeResponse(for: session, inputState: session.inputState)
         case .synchronizeInputLanguage(let language):
+            session.temporaryEnglishInput = false
             session.inputLanguage = language
             if language == .english {
                 session.manager.stopJapaneseInput()

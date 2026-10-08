@@ -48,8 +48,9 @@ extension ConverterServer {
         } else {
             markedText = ConverterMarkedText(manager.getCurrentMarkedText(inputState: inputState))
         }
+        let temporaryEnglishInput = TemporaryEnglishInput.isActive(session.temporaryEnglishInput, inputState: inputState)
         let candidateWindow: ConverterCandidateWindow
-        switch manager.getCurrentCandidateWindow(inputState: inputState) {
+        switch temporaryEnglishInput ? .hidden : manager.getCurrentCandidateWindow(inputState: inputState) {
         case .hidden:
             candidateWindow = .hidden
         case .composing(let candidates, let selectionIndex):
@@ -64,7 +65,7 @@ extension ConverterServer {
             )
         }
         let predictionCandidates: [ConverterPredictionCandidate]
-        if inputState == .composing {
+        if inputState == .composing, !temporaryEnglishInput {
             predictionCandidates = SegmentsManager.preferredPredictionCandidates(
                 typoCorrectionCandidates: manager.requestTypoCorrectionPredictionCandidates(),
                 predictionCandidates: manager.requestPredictionCandidates()

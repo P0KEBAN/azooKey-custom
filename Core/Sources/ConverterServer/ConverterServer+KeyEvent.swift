@@ -32,6 +32,8 @@ extension ConverterServer {
         Config.DebugPredictiveTyping().value = request.enablePredictiveTyping
         Config.DebugTypoCorrection().value = request.enableTypoCorrection
 
+        session.temporaryEnglishInput = TemporaryEnglishInput.isActive(session.temporaryEnglishInput, inputState: session.inputState)
+
         if request.enableOptionDirectFullWidthInput,
            let text = OptionDirectInputResolver.resolve(
             characters: request.optionDirectInputText,
@@ -51,20 +53,26 @@ extension ConverterServer {
             return response
         }
 
+        let starting = TemporaryEnglishInput.shouldStart(event: request.event, inputLanguage: session.inputLanguage, inputState: session.inputState)
+        let interpretationLanguage = TemporaryEnglishInput.interpretationLanguage(starting: starting, active: session.temporaryEnglishInput, inputLanguage: session.inputLanguage)
         let userAction = UserAction.getUserAction(
             eventCore: request.event,
-            inputLanguage: session.inputLanguage,
+            inputLanguage: interpretationLanguage,
             typeBackSlash: request.typeBackSlash
         )
-        let (clientAction, clientActionCallback) = session.inputState.event(
+        let (action, callback) = session.inputState.event(
             eventCore: request.event,
             userAction: userAction,
-            inputLanguage: session.inputLanguage,
+            inputLanguage: interpretationLanguage,
             liveConversionEnabled: request.liveConversionEnabled,
             enableDebugWindow: request.enableDebugWindow,
             enableSuggestion: request.enableSuggestion
         )
 
+        let (clientAction, clientActionCallback) = TemporaryEnglishInput.resolveAction(
+            action, callback: callback, starting: starting, active: session.temporaryEnglishInput, inputState: session.inputState
+        )
+        session.temporaryEnglishInput = starting || session.temporaryEnglishInput
         var effects: [ConverterClientEffect] = []
         var inputLanguage = session.inputLanguage
         let actionHandled = perform(
@@ -92,6 +100,7 @@ extension ConverterServer {
             currentInputState: session.inputState,
             compositionIsEmpty: session.manager.isEmpty
         )
+        session.temporaryEnglishInput = TemporaryEnglishInput.markAfterAction(session.temporaryEnglishInput, action: clientAction, inputState: nextInputState)
         session.inputState = nextInputState
         session.inputLanguage = inputLanguage
         let response = ConverterServerResponse(
@@ -117,7 +126,8 @@ extension ConverterServer {
     ) -> Bool {
         let manager = session.manager
         let inputState = session.inputState
-        let inputStyle = Self.resolveInputStyle(session.inputLanguage == .english ? .direct : request.inputStyle)
+        let interpretationLanguage = TemporaryEnglishInput.interpretationLanguage(starting: false, active: session.temporaryEnglishInput, inputLanguage: session.inputLanguage)
+        let inputStyle = Self.resolveInputStyle(interpretationLanguage == .english ? .direct : request.inputStyle)
         let leftSideContext = session.conversionLeftSideContext()
         switch action {
         case .consume:
