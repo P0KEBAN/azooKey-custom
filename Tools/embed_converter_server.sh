@@ -6,7 +6,15 @@ if [ "${CONFIGURATION}" = "Release" ]; then
     swift_configuration=release
 fi
 
-swift build --package-path "${SRCROOT}/Core" --product ConverterServer -c "${swift_configuration}"
+# Xcode 27 (Swift 6.4) のswift buildは、LC_BUILD_VERSIONのsdkにSDKではなく
+# deployment targetのバージョンを記録する。Metalはこの値でshaderの言語バージョンを
+# 選ぶため、古い値のままだとZenzai (llama.cpp) のMetal初期化がassertで落ちる。
+# 実際のSDKバージョンを明示する。deployment targetはCore/Package.swiftのplatformsに揃える。
+deployment_target=13.0
+sdk_version="$(xcrun --sdk macosx --show-sdk-version)"
+
+swift build --package-path "${SRCROOT}/Core" --product ConverterServer -c "${swift_configuration}" \
+    -Xlinker -platform_version -Xlinker macos -Xlinker "${deployment_target}" -Xlinker "${sdk_version}"
 
 server_source="${SRCROOT}/Core/.build/${swift_configuration}/ConverterServer"
 server_directory="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/ConverterServer"
